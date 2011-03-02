@@ -6,19 +6,82 @@ Created on Feb 15, 2011
 
 #input: stop words, pages, index to build, title index to build
 
-#get pageID, title, text by parsing page
-#store pageID and title in title doc..
-#for title and text: concat total, with a newline. get stream of words.
-#lower case it all
-#get all the tokens
-#filter out tokens matching stop words
-#stem tokens with porter stemmer
+#Line 1: Descriptors
+#Line 2: # bits in line 3
+#line 3: bits + padding zeros to equal byte
+#line 4: #bits in line 5
+
+
+#Decode:
+#Decode function, takes in (Bytes bytes, int numBits)
+#Getline function, gets the line of bytes corresponding to the input line number (int linenum)
+#	line 1 = line 3
+#	line bytes = line 1(descript) + line 2(bits in 3) + bytes in 3 + line 4(bits in 5) + bytes in 5...
+#
+#	readline
+#	1: read(bytes in readline)
+#	2: read(bytes in readline)
+#	3: read(bytes in readline)
+#etc...
 
 import sys
 import re
-import PorterStemmer
 import time
+import heapq
+from BitVector import BitVector
 
+#globals
+frequencyHash = {}
+frequencyList = []
+testOutput = open('test.txt','wb')
+
+
+def encode(f):
+	file = open(f,'r')
+	c = file.read(1)
+	while len(c)>0:
+		addToList(c)
+		c = file.read(1)
+	for k,v in frequencyHash.iteritems():
+		frequencyList.append((v,k))
+	freqTree = getTree(frequencyList)
+	printTree(freqTree,testOutput)
+	file.seek(0)
+	#testOutput.write(
+	#file.write('filename','wb')
+
+def printTree(huffTree, file, prefix = ''):
+	if len(huffTree) == 2:
+		file.write('('+str(huffTree[1]) + "," + prefix+')')
+	else:
+		printTree(huffTree[1], file,prefix + '0')
+		printTree(huffTree[2], file,prefix + '1')
+
+def decode(b,numBits):
+	print('decode file')
+
+def getLine(lineNum):
+	print ('getLine')
+	
+def getTree(freqlist):
+	tree = list(freqlist)
+	heapq.heapify(tree)
+	while len(tree) > 1:
+		left = heapq.heappop(tree)
+		right = heapq.heappop(tree)
+		next = (left[0]+right[0],left,right)
+		heapq.heappush(tree,next)
+	return tree[0]
+
+def addToList(char):
+	if char in frequencyHash:
+            frequencyHash[char] = frequencyHash[char]+1
+        else:
+            frequencyHash[char] = 0
+
+encode('small.dat.np')
+
+'''
 words = {}
 p = PorterStemmer.PorterStemmer()
 
@@ -77,3 +140,4 @@ elapsed= end - start
  
 min = elapsed/60
 #print(min) #comment to not print runtime
+'''
