@@ -6,6 +6,20 @@ Created on Feb 15, 2011
 '''
 #input: stop words, pages, index to build, title index to build
 
+format of .p file:
+text that is encoded: (substitute ' ' for _)
+docid1_pos1_(pos2-pos1)_(pos3-pos2)_(docid2-docid1)_pos1_(pos2-pos1)__(docid3-docid2)_pos1__docid...
+docid1_pos1__(docid2-docid1)_pos1__(docid3-docid2)_pos1_(pos2-pos1)_(pos3-pos2)__docid...
+etc
+What this means:
+The orignal line 1:1,3,6 2:1 6:1,5,20 translates to:
+1 1 2 3  1 1  4 1 4 15
+
+
+Format of .np file
+
+
+
 #Line 1: Descriptors
 #Everything else is encoded. Read encoded '\n', then get a bit-encoded int until next '\n' 
 Then read that many bits (padded to make bytes, i.e.... 6 bits + 2 padding zeros for bytes, and decode
@@ -117,40 +131,37 @@ def convertFile(f):
 	positional=0
 	if (string.find(file.readline(),':')!=-1):
 		positional=1
+	file.seek(0)
 	if positional:
-		#WARNING BROKEN FOR THE TIME BEING
 		for line in file:
-			#replace convert semis to commas for faster encoding. We dont need different ones,
+			#convert semis to commas for faster encoding. We dont need different ones,
 			#the first term is always the docID, and the rest are positions
 			line = string.replace(line,':',',')
 			
 			#split the line by whitespace
-			docs = line.split()
-			for doc in docs:
-				#split each individual doc:pos part by commas. This isn't working right now. Dont
-				#know why
-				doc = doc.split(',')
+			docs = line.split()				
 			#store docID
-			i = int(docs[0][0])
+			docID = int(docs[0].split(',')[0])
+			tempFile.write
 			for doc in docs:
-			
+				tempDoc = doc.split(',')
 			#Write difference in docID (if the past was doc 10 and this is doc 12, write 2)
-				if doc[0] == i:
-					tempFile.write(str(i))
+				if int(tempDoc[0]) == docID:
+					tempFile.write(str(docID))
 				else:
-					f = int(doc[0]) - i
-					i = int(doc[0])
-					tempFile.write(" " + str(f))
+					f = int(tempDoc[0]) - docID
+					docID = int(tempDoc[0])
+					tempFile.write(' ' + str(f))
 			
-			#write difference in positions, same deal as above. Here is where we break, because
-			#the above portion (doc.split(',')) doesn't work right
-				count = int(doc[1])
+			#write difference in positions
+				count = int(tempDoc[1])
 				tempFile.write(' ' + str(count))
-				for num in doc[2:len(doc)]:
+				for num in tempDoc[2:len(doc)]:
 					f = int(num) - count
 					count = int(num)
-					tempFile.write(',' + str(f))
+					tempFile.write(' ' + str(f))
 				tempFile.write(' ')
+			tempFile.write('\n')
 	else: 
 		for line in file:
 			#split whitespace in line...
@@ -169,8 +180,11 @@ def convertFile(f):
 	
 #Compress...
 start = time.time()
-#Don't convert a .p file yet. It's broken, I need to fix it.
-convertFile('smallTest.dat.np')
+
+convertFile('contestPostings.dat.np')
+#convertFile('smallTest.dat.np')
+#convertFile('smallTest.dat.p')
+#convertFile('contestPostings.dat.p')
 #temporary file. We need to delete it
 encode('temp.txt')
 #writes to test.txt at the moment
