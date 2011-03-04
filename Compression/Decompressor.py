@@ -24,7 +24,22 @@ def bits(f):
     return x
 
 def parseResult(expr):
-    nums = expr.split(' '
+    b = expr.split('  ')
+    for i in range(len(b)):
+        b[i] = b[i].split(' ')
+    for i in range(len(b)):
+        for j in range(len(b[i])):
+            b[i][j] = int(b[i][j])
+    for i in range(1,len(b)):
+        b[i][0] = b[i][0] + b[i-1][0]
+    for i in range(len(b)):
+        for j in range(2,len(b[i])):
+            b[i][j] = b[i][j] + b[i][j-1]
+    results_list = ['' for i in b]
+    for i in range(len(b)):
+        results_list[i] = str(b[i][0]) + ":" + ','.join([str(b[i][j]) for j in range(1, len(b[i]))])
+    return ' '.join(results_list)
+        
 
 def query(num):
     f = to_decode
@@ -131,7 +146,7 @@ def query(num):
                             continue
                     if mode==READING_DATA:
                         if huff[currentCharBits]=='\n':
-                            print currentLine # End of reading data - dump and exit function
+                            print parseResult(currentLine) # End of reading data - dump and exit function
                             return
                         else: 
                             currentLine+=huff[currentCharBits]	#add that char
