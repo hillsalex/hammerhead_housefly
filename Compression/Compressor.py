@@ -46,13 +46,16 @@ import StringIO
 import os.path
 import string
 
+if len(sys.argv) < 3:
+    print "format: "+sys.argv[0]+" uncompressedPostings compressedPostings"
+    exit()
+
 #globals
 frequencyHash = {}
 frequencyList = []
 huffHash = {}
 tempFile = open('temp.txt','wb')
-testOutput = open('test.txt','wb')
-tempDecode = open('tempdecode.txt','wb')
+testOutput = open(sys.argv[2],'wb')
 
 def printbits(f):
 	file = open(f,'r')
@@ -91,7 +94,7 @@ def decode(f):
 	currentLine = ''
 	complete = 0
 	
-														#reads first 8 bits. we can't read in a different amount than 8...
+									#reads first 8 bits. we can't read in a different amount than 8...
 	currentbits = bits(ord(file.read(1))) 				#bit buffer
 	
 
@@ -104,7 +107,7 @@ def decode(f):
 				if len(ch)!=0: 							#if it's not the end of the file
 					currentbits = bits(ord(ch))			#store those bits
 
-				else: 									#if it is the end of the file, set our buffer to zero
+				else: 					#if it is the end of the file, set our buffer to zero
 					currentbits = []
 			if len(currentbits)==0: 					#if our buffer is zero
 				gotChar = 1								#we're done
@@ -276,15 +279,10 @@ encode('temp.txt') <this filename is set in the top of the file
 decode('test.txt') <this also is, but its just the result of encode. so whatever.
 '''
 
-convertFile('contestPostings.dat.p')
-#convertFile('smallTest.dat.np')
-#convertFile('smallTest.dat.p')
-#convertFile('contestPostings.dat.p')
+convertFile(sys.argv[1])
 #temporary file. We need to delete it
 encode('temp.txt')
-decode('test.txt')
 #printbits('test.txt')
-#writes to test.txt at the moment
 end = time.time()
  
 elapsed= end - start
