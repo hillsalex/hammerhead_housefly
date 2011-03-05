@@ -44,6 +44,7 @@ import time
 import heapq
 import StringIO
 import os.path
+import os
 import string
 
 if len(sys.argv) < 3:
@@ -56,6 +57,7 @@ frequencyList = []
 huffHash = {}
 tempFile = open('temp.txt','wb')
 testOutput = open(sys.argv[2],'wb')
+tempDecode = open('decode.txt','wb')
 
 def printbits(f):
 	file = open(f,'r')
@@ -149,7 +151,7 @@ def encode(f):
 	
 	#restart file
 	file.seek(0)
-	print("Hash Done")
+	#print("Hash Done")
 	c=0
 	ss = ''
 	for line in file:
@@ -171,14 +173,6 @@ def encode(f):
 			ss = ''.join(chr(i) for i in ss)
 			testOutput.write(ss)
 			ss=''
-		#s = [int(s[x:x+8], 2) for x in range(0,len(s),8)]
-		#s = ''.join(chr(i) for i in s)
-		#testOutput.write(s)
-		
-		if (c%100==0):
-			#Prints counter to know how far into file we are.
-			print c
-		c=c+1
 	ss = [int(ss[x:x+8], 2) for x in range(0,len(ss),8)]
 	ss = ''.join(chr(i) for i in ss)
 	testOutput.write(ss)
@@ -282,10 +276,11 @@ decode('test.txt') <this also is, but its just the result of encode. so whatever
 convertFile(sys.argv[1])
 #temporary file. We need to delete it
 encode('temp.txt')
-#printbits('test.txt')
+os.remove('temp.txt')
+#decode('tests.np')
 end = time.time()
  
 elapsed= end - start
  
 min = elapsed/60
-print(min)
+#print(min)
