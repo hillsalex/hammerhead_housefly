@@ -46,16 +46,20 @@ import StringIO
 import os.path
 import os
 import string
+import math
 
 if len(sys.argv) < 3:
     print "format: "+sys.argv[0]+" uncompressedPostings compressedPostings"
     exit()
 
 #globals
+BREAK_NUM = 1000
 frequencyHash = {}
 frequencyList = []
 huffHash = {}
+tempEncodeName = 'tempencode.txt'
 tempFile = open('temp.txt','wb')
+tempEncode = open(tempEncodeName, 'wb')
 testOutput = open(sys.argv[2],'wb')
 tempDecode = open('decode.txt','wb')
 
@@ -67,66 +71,6 @@ def printbits(f):
 		s+=bits(b)
 	print(s)
 
-def decode(f):
-	file = open(f,'r')
-	last = file.read(1)
-	complete=0
-	huffstring = ''
-	bytesread=1
-	while not(complete):
-		huffstring+=last
-		temp = last
-		last = file.read(1)
-		if (temp==')' and last!='('):
-			file.seek(bytesread)
-			complete=1
-		else:
-			bytesread=bytesread+1
-	huffstring = string.replace(huffstring,')(','|')
-	huffstring = string.replace(huffstring,')','')
-	huffstring = string.replace(huffstring,'(','')
-	huffstring = huffstring.split('|')
-	huff = {}
-	for s in huffstring:
-		toAdd = s.split(',')
-		huff[toAdd[1]] = toAdd[0]
-	
-	
-	'''HERE IS WHERE WE BEGIN READING'''
-	currentLine = ''
-	complete = 0
-	
-									#reads first 8 bits. we can't read in a different amount than 8...
-	currentbits = bits(ord(file.read(1))) 				#bit buffer
-	
-
-	while not(complete):								#while the file isn't parsed...
-		currentCharBits = ''
-		gotChar = 0
-		while not gotChar:								#while we haven't decompressed an entire character...
-			if (len(currentbits)==0):					#if our bit buffer is empty
-				ch = file.read(1)						#get some more
-				if len(ch)!=0: 							#if it's not the end of the file
-					currentbits = bits(ord(ch))			#store those bits
-
-				else: 					#if it is the end of the file, set our buffer to zero
-					currentbits = []
-			if len(currentbits)==0: 					#if our buffer is zero
-				gotChar = 1								#we're done
-				complete = 1 							#done everything
-			else:
-				currentCharBits += currentbits[0]		#grab the first bit in the buffer
-				currentbits = currentbits[1::]			#reduce our buffer size
-				
-				if (currentCharBits in huff):			#if the bits we're currently storing match a huffman encoding
-					gotChar = 1 						#we have a char
-					currentLine+=huff[currentCharBits]	#add that char
-					currentCharBits = ''				#restart
-					
-	tempDecode.write(currentLine)
-	tempDecode.flush()
-			
-		
 
 def encode(f):
 	file = open(f,'r')
@@ -154,8 +98,12 @@ def encode(f):
 	#print("Hash Done")
 	c=0
 	ss = ''
+	line_num = 0
+	bit_num = 0
 	for line in file:
 		s=''
+		if line_num % BREAK_NUM == 0:
+                    testOutput.write(str(bit_num)+'\n')
 		for char in line:
 			#get encoded char
 			s += huffHash[char]
@@ -168,14 +116,24 @@ def encode(f):
 		
 		s = huffHash['\n'] + length + huffHash['\n'] + s
 		ss += s
+		bit_num += len(s)
 		if (len(ss)%8)==0:
 			ss = [int(ss[x:x+8], 2) for x in range(0,len(ss),8)]
 			ss = ''.join(chr(i) for i in ss)
-			testOutput.write(ss)
+			tempEncode.write(ss)
 			ss=''
+                line_num += 1
 	ss = [int(ss[x:x+8], 2) for x in range(0,len(ss),8)]
 	ss = ''.join(chr(i) for i in ss)
-	testOutput.write(ss)
+	tempEncode.write(ss)
+	tempEncode.flush()
+	tempEncode.close()
+	testOutput.write('\n\n')
+	tempEncodeRead = open(tempEncodeName, 'r')
+	for line in tempEncodeRead:
+            testOutput.write(line)
+        tempEncodeRead.close()
+        os.remove(tempEncodeName)
 	testOutput.flush()
 	testOutput.close()
 

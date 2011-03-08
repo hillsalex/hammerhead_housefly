@@ -22,6 +22,8 @@ READING_DATA = 3
 NONPOSITIONAL_TYPE = 0
 POSITIONAL_TYPE = 1
 
+BREAK_NUM = 1000 # bit index jumps
+
 to_decode = sys.argv[1]
 dec_file = sys.argv[1].split('.')
 exten = dec_file[len(dec_file)-1]
@@ -92,9 +94,23 @@ def queryP(num):
 	huffstring = huffstring.split('|')
 	huff = {}
 	for s in huffstring:
-			toAdd = s.split(',')
-			huff[toAdd[1]] = toAdd[0]
+                toAdd = s.split(',')
+                huff[toAdd[1]] = toAdd[0]
 
+        bitStart = 0 # The bit to jump to
+        bitLineToFind = math.floor(num/BREAK_NUM)
+        currBitLine = 0
+	while 1:
+                lin = file.readline()
+                if lin=='\n':
+                        if file.readline()=='\n': # got two newlines in a row
+                                break
+                else:
+                        if currBitLine == bitLineToFind:
+                                bitStart = int(lin.rstrip('\n'))
+                        currBitLine += 1
+        file.seek(int(math.floor(bitStart/8.0)), os.SEEK_CUR)
+        
 
 	'''HERE IS WHERE WE BEGIN READING'''
 	currentLine = ''
@@ -102,17 +118,18 @@ def queryP(num):
 	mode = READING_INIT_NEWLINE
 	just_jumped_num = 0
 	bitsleft=0
-	roll = 0
+	bitRoll = (bitStart % 8)
 	jump = 0
 																	
 	currentbits = bits(ord(file.read(1))) 				#bit buffer
+	currentbits = currentbits[bitRoll:]
 
-	line_num = 0
+	line_num = int(math.floor(num/BREAK_NUM))*BREAK_NUM
 	totalbits=8
 	while not(complete):								#while the file isn't parsed...
 		currentCharBits = ''
 		jump = 0
-		roll = 0
+		bitRoll = 0
 		gotChar = 0
 		while not gotChar:					#while we haven't decompressed an entire character...
 			if (len(currentbits)==0):			#if our bit buffer is empty
@@ -133,7 +150,7 @@ def queryP(num):
 			if not complete:
 				#print('buffer ' + currentbits)
 				currentCharBits += currentbits[0]		#grab the first bit in the buffer
-				currentbits = currentbits[1::]			#reduce our buffer size			
+				currentbits = currentbits[1::]			#reduce our buffer size
 				#print('current char' + currentCharBits)				
 				if (currentCharBits in huff):			#if the bits we're currently storing match a huffman encoding
 					gotChar = 1 						#we have a char
@@ -145,8 +162,8 @@ def queryP(num):
 							mode = READING_LINE_NUMBER
 							continue
 						else:
-							print "Error: expected newline."
-							break
+							print "Error: expected newline (got "+huff[currentCharBits]+")"
+							exit()
 					if mode==READING_LINE_NUMBER:
 						#print('ReadingLineNumber: ' + huff[currentCharBits])
 						if huff[currentCharBits]=='\n':
@@ -215,12 +232,26 @@ def queryNP(num):
 	for s in huffstring:
 		toAdd = s.split(',')
 		huff[toAdd[1]] = toAdd[0]
-	
+
+	bitStart = 0 # The bit to jump to
+        bitLineToFind = math.floor(num/BREAK_NUM)
+        currBitLine = 0
+	while 1:
+                lin = file.readline()
+                if lin=='\n':
+                        if file.readline()=='\n': # got two newlines in a row
+                                break
+                else:
+                        if currBitLine == bitLineToFind:
+                                bitStart = int(lin.rstrip('\n'))
+                        currBitLine += 1
+        
+        file.seek(int(math.floor(bitStart/8.0)), os.SEEK_CUR)
 	
 	'''HERE IS WHERE WE BEGIN READING'''
 	currentLine = ''
 	complete = 0
-	line_num = 0
+	line_num = int(math.floor(num/BREAK_NUM))*BREAK_NUM
 	mode = READING_INIT_NEWLINE
 																	
 	currentbits = bits(ord(file.read(1))) 				#bit buffer
@@ -263,11 +294,12 @@ def queryNP(num):
 					currentCharBits = ''				#restart 
 while 1:
 	next = sys.stdin.readline()
+	start = time.time()
 	if not next:
-		break
-	if next=='\n':
 		break
 	if ctype == POSITIONAL_TYPE:
 		queryP(int(next))
 	elif ctype == NONPOSITIONAL_TYPE:
 		queryP(int(next))
+	end = time.time()
+	#print (end - start)
