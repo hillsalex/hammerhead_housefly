@@ -1,18 +1,90 @@
 from bool_parser import bool_expr_ast
 import sys
 import PorterStemmer
+from BTrees.OOBTree import OOBTree
+import time
 
+""" Query-type constants """
 ONE_WORD_QUERY = 1
 FREE_TEXT_QUERY = 2
 PHRASE_QUERY = 3
 BOOLEAN_QUERY = 4
-
+WILDCARD_QUERY = 5
 
 if len(sys.argv) < 4:
     print "format: "+sys.argv[0]+" stopwords index titles"
     exit()
 
 queries = sys.stdin.readlines()
+
+""" Returns a list of permutations for single wildcard queries """
+def permute_single(s):
+	result = []
+	s = s + '$'
+	for i in range(len(s)):
+		sp = s[i+1:] + s[:i+1]
+		result.append(sp)
+	return result
+
+""" Returns a list of permutations for double wildcard queries """
+def permute_double(s):
+	result = []
+	for i in range(len(s)):
+		for j in range(i+1,len(s)+1):
+			result.append(s[j:] + '$' + s[:i])
+	return result
+
+""" Returns a list of all necessary permutations for a query """
+def do_permute(s):
+	result = []
+	result.extend(permute_single(s))
+	result.extend(permute_double(s))
+	return result
+
+""" Adds a node to btree """
+def btree_add(s, line_num):
+	for x in do_permute(s): 
+		if bt.has_key(x):
+			bt[x].append(line_num)
+		else:
+			bt[x] = [line_num]
+
+""" Returns rotated form of query with one wildcard """	
+def rotate1wild(s):
+	s = s + '$'
+	b = list(s)
+	return s[b.index('*')+1:] + s[:b.index('*')]
+	
+""" Returns (rotated form, middle) of query with two wildcards as tuple """	
+def rotate2wild(s):
+	s = s + '$'
+	b = list(s)	
+	i = b.index('*')
+	s = s[:i] + s[i+1:]
+	b = list(s)
+	j = b.index('*')
+	return (s[j+1:] + s[:i], s[i:j])
+
+""" Returns a list of row numbers matching the wildcard query """
+def getWildcardRows(s):
+	b = list(s)
+	if b.count('*')==1:
+		return bt[rotate1wild(s)]
+	if b.count('*')==2:
+		res = rotate2wild(s)
+		print bt[res[0]]
+		return bt[rotate2wild(s)[0]]
+		#return [x for x in bt[res[0]] if x.find(res[1])!=-1]
+
+""" Returns a (query, docs) tuple for a given line number """
+def getQueryByNumber(num):
+	index = open(sys.argv[2], 'r')
+	line_num = 0
+	for line in index:
+		if line_num==num:
+			words = line.split(' ', 1)
+			return (words[0], words[1])
+		line_num += 1
 
 """ Returns the query type (e.g. boolean query) """
 def getQueryType(query):
@@ -23,6 +95,8 @@ def getQueryType(query):
     for i in range(len(query)):
         if query[i] == " ":
             return FREE_TEXT_QUERY
+        if query[i] == "*":
+            return WILDCARD_QUERY
     return ONE_WORD_QUERY
 
 """ Returns a list of documents containing the given word """
@@ -38,16 +112,24 @@ def getDocsWithWord(word):
     docs = removeDuplicatesAndSort(docs)
     return docs
 
-""" Returns a list of (document, location) tuples corresponding to the given word """
+""" Returns a list of (document, location) tuples corresponding to the given word, which may contain wildcards """
 def getDocLocsWithWord(word):
     docs = []
+    wildcard = False
+    for letter in word:
+        if letter=='*':
+            wildcard = True
     index = open(sys.argv[2])
-    for line in index:
-        line = line.split(" ", 1)
-        if line[0]==word:
-            doclist = eval(line[1].strip('\n'))
-            for word_instance in doclist:
-                docs.append((int(word_instance[0]), word_instance[1]))
+    if wildcard:
+       line = getQueryByNumber(getWildcardRows(word))[1]
+       doclist = eval(line[1].strip('\n'))
+    else:
+        for line in index:
+            line = line.split(" ", 1)
+            if line[0]==word:
+                doclist = eval(line[1].strip('\n'))
+    for word_instance in doclist:
+        docs.append((int(word_instance[0]), word_instance[1]))
     docs = removeDuplicatesAndSort(docs)
     return docs
 
@@ -200,6 +282,27 @@ def parseBooleanQuery(query):
     query = bool_expr_ast(query)
     return getDocsFromBool(query)
 
+""" Parse a wildcard query and return matching documents """
+def parseWildcardQuery(query):
+	rows = getWildcardRows(query)
+	docs = []
+	for row in rows:
+		doclist = eval(getQueryByNumber(row)[1].strip('\n'))
+		for word_instance in doclist:
+			docs.append(int(word_instance[0]))
+		#print str(getQueryByNumber(row)[0])
+	docs = removeDuplicatesAndSort(docs)
+	return docs
+
+''' Preprocessing - generate b-tree '''
+bt = OOBTree()
+index = open(sys.argv[2], 'r');
+line_num = 0
+for line in index:
+	words = line.split(' ')
+	btree_add(words[0], line_num)
+	line_num += 1
+
 for query in queries:
     query = query.rstrip('\n')
     docs = []
@@ -212,4 +315,6 @@ for query in queries:
         docs = parsePhraseQuery(query)
     elif qtype==BOOLEAN_QUERY:
         docs = parseBooleanQuery(query)
+    elif qtype==WILDCARD_QUERY:
+        docs = parseWildcardQuery(query)
     print " ".join([str(i) for i in docs])
