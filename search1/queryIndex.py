@@ -136,7 +136,7 @@ def getDocLocsWithWord(word):
     return docs
 
 def parseDocData(docdata):
-    docdata.split(" ",1)
+    docdata = docdata.split(" ",1)
     docdata = (docdata[0], docdata[1].split(","))
     docdata[1].pop() # remove element created trailing comma
     for i in range(len(docdata[1])):
@@ -300,16 +300,14 @@ def parseBooleanQuery(query):
 """ Parse a wildcard query and return matching documents """
 def parseWildcardQuery(query):
 	rows = getWildcardRows(query)
-	docs = []
+	doclist = []
 	for row in rows:
-		doclist = eval(getQueryByNumber(row)[1].strip('\n'))
-		for word_instance in doclist:
-			docs.append(int(word_instance[0]))
-		#print str(getQueryByNumber(row)[0])
-	docs = removeDuplicatesAndSort(docs)
-	return docs
+		result = getQueryByNumber(row)
+		#print result[0]
+		doclist.append(parseDocData(result[1].strip('\n')))
+	return doclist
 
-print "Preprocessing"
+#print "Preprocessing"
 start = time.time()
 
 ''' Preprocessing - generate b-tree '''
@@ -324,8 +322,7 @@ for line in index:
 	btree_add(words[0], line_num)
 	line_num += 1
 
-print "Done preprocessing ("+str(time.time() - start)+" seconds)."
-print "Size of tree: "+str(len(bt.keys()))
+#print "Done preprocessing ("+str(time.time() - start)+" seconds)."
 
 for query in queries:
     query = query.rstrip('\n')
