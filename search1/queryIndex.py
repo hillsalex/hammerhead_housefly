@@ -120,18 +120,33 @@ def getDocLocsWithWord(word):
         if letter=='*':
             wildcard = True
     index = open(sys.argv[2])
+    result_list = []
     if wildcard:
-       line = getQueryByNumber(getWildcardRows(word))[1]
-       doclist = eval(line[1].strip('\n'))
+	rows = getWildcardRows(word)
+	for row in rows:
+           line = getQueryByNumber(getWildcardRows(word))
+           result_list.append(line[1].strip('\n'))
     else:
         for line in index:
             line = line.split(" ", 1)
             if line[0]==word:
-                doclist = eval(line[1].strip('\n'))
-    for word_instance in doclist:
-        docs.append((int(word_instance[0]), word_instance[1]))
-    docs = removeDuplicatesAndSort(docs)
+                result_list = [line[1].strip('\n')]
+    for doc_instance in result_list:
+        docs.append(parseDocData(doc_instance))
     return docs
+
+def parseDocData(docdata):
+    docdata.split(" ",1)
+    docdata = (docdata[0], docdata[1].split(","))
+    docdata[1].pop() # remove element created trailing comma
+    for i in range(len(docdata[1])):
+        docdata[1][i] = docdata[1][i].split(" ")
+    result = [[] for x in docdata[1]]
+    for i in range(len(docdata[1])):
+        for num in docdata[1][i]:
+            result[i].append(int(num))
+    return (float(docdata[0]), result)
+        
 
 """ Returns a list of documents that satisfy the given boolean expression """
 def getDocsFromBool(expr):
@@ -294,14 +309,23 @@ def parseWildcardQuery(query):
 	docs = removeDuplicatesAndSort(docs)
 	return docs
 
+print "Preprocessing"
+start = time.time()
+
 ''' Preprocessing - generate b-tree '''
 bt = OOBTree()
 index = open(sys.argv[2], 'r');
 line_num = 0
 for line in index:
 	words = line.split(' ')
+	if line_num%5000==0:
+		print str(line_num) + " on "+ str(time.time() - start)
+		start = time.time()
 	btree_add(words[0], line_num)
 	line_num += 1
+
+print "Done preprocessing ("+str(time.time() - start)+" seconds)."
+print "Size of tree: "+str(len(bt.keys()))
 
 for query in queries:
     query = query.rstrip('\n')
