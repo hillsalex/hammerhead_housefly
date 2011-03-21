@@ -55,6 +55,7 @@ def parsePage(page):
     text = re.sub(stopWordString,' ',text)
     text = re.sub('\s+',' ',text)
     text = text.split(' ')
+	
     for i in range(1,len(text)):
         text[i] = p.stem(text[i], 0, len(text[i])-1)
         idpair = (ID,i)
