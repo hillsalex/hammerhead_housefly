@@ -1,8 +1,10 @@
 from bool_parser import bool_expr_ast
 import sys
 import PorterStemmer
-from BTrees.OOBTree import OOBTree
 import time
+
+MIN_WILD_LENGTH = 2
+LONG_WORD_LENGTH = 30
 
 """ Query-type constants """
 ONE_WORD_QUERY = 1
@@ -14,7 +16,7 @@ WILDCARD_QUERY = 5
 if len(sys.argv) < 4:
     print "format: "+sys.argv[0]+" stopwords index titles"
     exit()
-
+	
 queries = sys.stdin.readlines()
 
 """ Returns a list of permutations for single wildcard queries """
@@ -31,23 +33,38 @@ def permute_double(s):
 	result = []
 	for i in range(len(s)):
 		for j in range(i+1,len(s)+1):
-			result.append(s[j:] + '$' + s[:i])
+			new = s[j:] + '$' + s[:i]
+			if len(new) >= MIN_WILD_LENGTH:
+				result.append(new)
 	return result
 
 """ Returns a list of all necessary permutations for a query """
 def do_permute(s):
-	result = []
-	result.extend(permute_single(s))
+	result = permute_single(s)
 	result.extend(permute_double(s))
 	return result
 
-""" Adds a node to btree """
-def btree_add(s, line_num):
+""" Adds an element to hash table """
+def htable_add(s, line_num):
+	if len(s) > LONG_WORD_LENGTH: 
+		long_words[s] = line_num
+		return
 	for x in do_permute(s): 
-		if bt.has_key(x):
-			bt[x].append(line_num)
+		#if len(x) < MIN_WILD_LENGTH + 2: continue
+		if ht.has_key(x):
+			ht[x] = ht[x] + " " + str(line_num)
+			a = 1
 		else:
-			bt[x] = [line_num]
+			ht[x] = str(line_num)
+
+""" Given a rotated query, returns the list of rows of long word matches """
+def checkLongWords(query):
+	result = []
+	for word in long_words.keys():
+		for permuterm in do_permute(word):
+			if permuterm==query:
+				result.append(long_words[word])
+	return result
 
 """ Returns rotated form of query with one wildcard """	
 def rotate1wild(s):
@@ -68,16 +85,42 @@ def rotate2wild(s):
 """ Returns a list of row numbers matching the wildcard query """
 def getWildcardRows(s):
 	b = list(s)
+	result = []
 	if b.count('*')==1:
-		return bt[rotate1wild(s)]
+		res = rotate1wild(s)
+		result = checkLongWords(res)
+		if ht.has_key(res):
+			result.extend(str(ht[res]).split(" "))
 	if b.count('*')==2:
-		res = rotate2wild(s)
-		print bt[res[0]]
-		return bt[rotate2wild(s)[0]]
-		#return [x for x in bt[res[0]] if x.find(res[1])!=-1]
-
+		if s[0]=='*' and s[len(s)-1]=='*':
+			result = rowsWithSubstring(s[1:len(s)-1])
+		else:
+			res = rotate2wild(s)
+			result = checkLongWords(res[0])
+			if ht.has_key(res[0]):
+				result.extend(str(ht[res[0]]).split(" "))
+			result = postProcess(result, res[1])
+	return result
+	
+""" Filters and returns only the rows corresponding to words which contain the substring 'sub' """
+def postProcess(rows, sub):
+	return [row for row in rows if getQueryByNumber(row)[0].find(sub)!=-1]
+	
+""" Returns all rows in index with word containing substring 'sub' """
+def rowsWithSubstring(sub):
+	index = open(sys.argv[2], 'r')
+	line_num = 0
+	result = []
+	for line in index:
+		words = line.split(' ', 1)
+		if words[0].find(sub)!=-1:
+			result.append(line_num)
+		line_num += 1
+	return result
+	
 """ Returns a (query, docs) tuple for a given line number """
 def getQueryByNumber(num):
+	num = int(num)
 	index = open(sys.argv[2], 'r')
 	line_num = 0
 	for line in index:
@@ -138,7 +181,7 @@ def getDocLocsWithWord(word):
 def parseDocData(docdata):
     docdata = docdata.split(" ",1)
     docdata = (docdata[0], docdata[1].split(","))
-    docdata[1].pop() # remove element created trailing comma
+    docdata[1].pop() # remove element created by trailing comma
     for i in range(len(docdata[1])):
         docdata[1][i] = docdata[1][i].split(" ")
     result = [[] for x in docdata[1]]
@@ -146,7 +189,6 @@ def parseDocData(docdata):
         for num in docdata[1][i]:
             result[i].append(int(num))
     return (float(docdata[0]), result)
-        
 
 """ Returns a list of documents that satisfy the given boolean expression """
 def getDocsFromBool(expr):
@@ -191,7 +233,6 @@ def tokenize(query):
             word = []
     stream = " ".join(tokens)
     return stream.replace("  ", " ")
-
 
 """ Returns true if a character is [a-z0-9] """
 def isAlphaNumeric(char):
@@ -299,30 +340,34 @@ def parseBooleanQuery(query):
 
 """ Parse a wildcard query and return matching documents """
 def parseWildcardQuery(query):
+	print "On query "+query
 	rows = getWildcardRows(query)
 	doclist = []
 	for row in rows:
+		print "row: "+str(row)
 		result = getQueryByNumber(row)
 		#print result[0]
 		doclist.append(parseDocData(result[1].strip('\n')))
 	return doclist
 
-#print "Preprocessing"
+print "Preprocessing"
 start = time.time()
+start2 = time.time()
 
-''' Preprocessing - generate b-tree '''
-bt = OOBTree()
+''' Preprocessing - generate hash table '''
+ht = {}
+long_words = {}
 index = open(sys.argv[2], 'r');
 line_num = 0
 for line in index:
 	words = line.split(' ')
-	if line_num%5000==0:
-		print str(line_num) + " on "+ str(time.time() - start)
-		start = time.time()
-	btree_add(words[0], line_num)
+	if line_num%20000==0:
+		print str(line_num) + " on "+ str(time.time() - start2)
+		start2 = time.time()
+	htable_add(words[0], line_num)
 	line_num += 1
 
-#print "Done preprocessing ("+str(time.time() - start)+" seconds)."
+print "Done preprocessing ("+str(time.time() - start)+" seconds)."
 
 for query in queries:
     query = query.rstrip('\n')
