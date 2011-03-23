@@ -169,10 +169,7 @@ def getDocsWithWord(word):
 
 """ Returns a list of (document, location) tuples corresponding to the given word, which may contain wildcards """
 def getDocLocsWithWord(word):
-	data = getDataWithWord(word)
 	result_list = []
-	if not data:
-		return []
 	wildcard = False
 	for letter in word:
 		if letter=='*':
@@ -180,10 +177,14 @@ def getDocLocsWithWord(word):
 	if wildcard:
 		rows = getWildcardRows(word)
 		for row in rows:
-			line = getQueryByNumber(getWildcardRows(word))
-			result_list.append(getDocLocsFromData(parseDocData(line[1].strip('\n'))))
+			line = getQueryByNumber(row)
+			word = parseDocData(line[1].strip('\n'))
+			result_list.extend(getDocLocsFromData(word))
 		return result_list
 	else:
+		data = getDataWithWord(word)
+		if not data:
+			return []
 		return getDocLocsFromData(parseDocData(data))
 
 def parseDocData(docdata):
@@ -316,11 +317,17 @@ def parseFreeTextQuery(query):
 
 """ Parse a phrase query and return matching documents """
 def parsePhraseQuery(query):
-	query = removeOperators(query)
-	query = query.lower()
-	query = tokenize(query)
-	query = removeStopWords(query)
-	query = stemWords(query)
+	query = query[1:len(query)-1]
+	wildcard = False
+	for i in range(len(query)):
+		if query[i]=='*':
+			wildcard = True
+	if not wildcard:
+		query = removeOperators(query)
+		query = query.lower()
+		query = tokenize(query)
+		query = removeStopWords(query)
+		query = stemWords(query)
 	query_list = query[0:len(query)].split(" ")
 	if len(query_list) < 2:
 		return getDocsWithWord(query)
@@ -341,7 +348,10 @@ def parsePhraseQuery(query):
 				break    
 	docs = [possible_docs[i][0] for i in range(len(possible_docs)) if delete_flags[i]==False]
 	#docs = removeDuplicatesAndSort(docs)
-	data = parseFreeTextQuery(query)
+	if not wildcard:
+		data = parseFreeTextQuery(query)
+	else:
+		data = parseWildcardQuery(query_list[0])
 	return removeDocsFromData(data, docs)
 
 """ Parse a boolean query and return matching documents """
