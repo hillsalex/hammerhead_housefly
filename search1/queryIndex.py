@@ -170,6 +170,7 @@ def getDocsWithWord(word):
 """ Returns a list of (document, location) tuples corresponding to the given word, which may contain wildcards """
 def getDocLocsWithWord(word):
 	data = getDataWithWord(word)
+	result_list = []
 	if not data:
 		return []
 	wildcard = False
@@ -180,7 +181,8 @@ def getDocLocsWithWord(word):
 		rows = getWildcardRows(word)
 		for row in rows:
 			line = getQueryByNumber(getWildcardRows(word))
-			result_list.append(line[1].strip('\n'))
+			result_list.append(getDocLocsFromData(parseDocData(line[1].strip('\n'))))
+		return result_list
 	else:
 		return getDocLocsFromData(parseDocData(data))
 
@@ -220,6 +222,8 @@ def getDocsFromBool(expr):
 
 """ Given a list of (word, idf, docs/positions list) index data, returns the data with only docs included in 'docs' """
 def removeDocsFromData(data, docs):
+	if not data or not docs:
+		return []
 	return [(x[0], x[1], [y for y in x[2] if y[0] in docs]) for x in data]
 				
 """ Removes operators from a string """
