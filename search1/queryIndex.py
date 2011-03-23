@@ -387,13 +387,16 @@ def printResults(scores):
 	result = []
 	for k,v in scores.iteritems():
 		result.append((k,v))
-	result = sorted(result,key=itemgetter(0))
-	print result
+	#result = sorted(result,key=itemgetter(0))
 	result = sorted(result,key=itemgetter(1),reverse=True)
-	print result
 	s = ""
+	count = 1
 	for i in result:
+		if count==10:
+			break
+		print i
 		s+=str(int(i[0])-1) + " "
+		count=count+1
 	print s
 	
 def itemgetter(*items):
@@ -461,6 +464,35 @@ def getPQDocRank(docs,query):
 				#docscores[str(int(doc[0])+1)]=count/docweights[str(int(doc[0])+1)]
 	#for k,v in docscores.iteritems():
 	#	print str(k) + ' ' + str(v)
+
+def getWCQDocRank(docs,query):
+	query = ""
+	for termdocs in docs:
+		if len(termdocs)>0:
+			term = termdocs[0]
+			query+=term + ' '
+	query = "a b c d e"
+	queryweights = {}
+	query = removeOperators(query)
+	query = query.lower()
+	query = tokenize(query)
+	query = removeStopWords(query)
+	query = stemWords(query)
+	query_list = query[0:len(query)].split(" ")
+	docscores = {}
+	print docs
+	for termdocs in docs:
+		if len(termdocs)>0:
+			term = termdocs[0]
+			idf = termdocs[1]+1
+			doclocations = termdocs[2:]
+			for doc in doclocations[0]:
+				count=len(doc[1:])
+				docscores[str(int(doc[0])+1)]=math.log10(len(query_list)/idf)*count/docweights[str(int(doc[0])+1)]
+	return docscores
+				#docscores[str(int(doc[0])+1)]=count/docweights[str(int(doc[0])+1)]
+	#for k,v in docscores.iteritems():
+	#	print str(k) + ' ' + str(v)
 		
 def getBQDocRank(docs,query):
 	
@@ -515,16 +547,19 @@ for line in index:
 			weight = weight.split(',')
 			docweights[str(int(weight[0])+1)]=math.sqrt(float(weight[1]))
 
-titles = open(sys.argv[3],'r');
-for line in titles:
-	tup = eval(line.rstrip('\n'))
-	titledict[tup[0]]=tup[1]
-	print tup
+#titles = open(sys.argv[3],'r');
+#for line in titles:
+	#tup = eval(line.rstrip('\n'))
+	#titledict[tup[0]]=tup[1]
 			
 #print "Done preprocessing ("+str(time.time() - start)+" seconds)."
 
+wcquery = ""
 while 1: 
+	wcquery=""
 	query = sys.stdin.readline()
+	if not query:
+		break
 	query = query.rstrip('\n')
 	docs = []
 	qtype = getQueryType(query)
@@ -541,6 +576,6 @@ while 1:
 		docs = parseBooleanQuery(query)
 		scores = getBQDocRank(docs,query)
 	elif qtype==WILDCARD_QUERY:
-		#docs = parseWildcardQuery(query)
-		scores = {}
+		docs = parseWildcardQuery(query)
+		scores = getWCQDocRank(docs,query)
 	printResults(scores);

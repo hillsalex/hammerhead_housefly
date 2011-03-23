@@ -1,10 +1,6 @@
 fire
 engine
-engine science test
-"Hoover Historical"
-"some text"
-some
-text
+eng*
 science
 test
 Hoover Historical Center, 1875 East Maple Street, North Canton
