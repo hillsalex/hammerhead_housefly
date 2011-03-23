@@ -378,8 +378,8 @@ def parseWildcardQuery(query):
 	for row in rows:
 		#print "row: "+str(row)
 		result = getQueryByNumber(row)
-		#print result[0]
-		doclist.append(parseDocData(result[1].strip('\n')))
+		print result
+		doclist.append(parseDocData(result[0]+" "+result[1].strip('\n')))
 	return doclist
 
 
