@@ -404,7 +404,6 @@ def printResults(scores):
 	for i in result:
 		if count==10:
 			break
-		print i
 		s+=str(int(i[0])-1) + " "
 		count=count+1
 	print s
