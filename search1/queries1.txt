@@ -1,0 +1,14 @@
+fire
+engine
+engine science test
+"Hoover Historical"
+"some text"
+some
+text
+science
+test
+engine AND science OR test
+"so* *ext"
+American
+Housework
+American Housework
