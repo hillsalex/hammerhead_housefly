@@ -16,118 +16,118 @@ WILDCARD_QUERY = 5
 if len(sys.argv) < 4:
     print "format: "+sys.argv[0]+" stopwords index titles"
     exit()
-	
+    
 queries = sys.stdin.readlines()
 
 """ Returns a list of permutations for single wildcard queries """
 def permute_single(s):
-	result = []
-	s = s + '$'
-	for i in range(len(s)):
-		sp = s[i+1:] + s[:i+1]
-		result.append(sp)
-	return result
+    result = []
+    s = s + '$'
+    for i in range(len(s)):
+        sp = s[i+1:] + s[:i+1]
+        result.append(sp)
+    return result
 
 """ Returns a list of permutations for double wildcard queries """
 def permute_double(s):
-	result = []
-	for i in range(len(s)):
-		for j in range(i+1,len(s)+1):
-			new = s[j:] + '$' + s[:i]
-			if len(new) >= MIN_WILD_LENGTH:
-				result.append(new)
-	return result
+    result = []
+    for i in range(len(s)):
+        for j in range(i+1,len(s)+1):
+            new = s[j:] + '$' + s[:i]
+            if len(new) >= MIN_WILD_LENGTH:
+                result.append(new)
+    return result
 
 """ Returns a list of all necessary permutations for a query """
 def do_permute(s):
-	result = permute_single(s)
-	result.extend(permute_double(s))
-	return result
+    result = permute_single(s)
+    result.extend(permute_double(s))
+    return result
 
 """ Adds an element to hash table """
 def htable_add(s, line_num):
-	if len(s) > LONG_WORD_LENGTH: 
-		long_words[s] = line_num
-		return
-	for x in do_permute(s): 
-		#if len(x) < MIN_WILD_LENGTH + 2: continue
-		if ht.has_key(x):
-			ht[x] = ht[x] + " " + str(line_num)
-			a = 1
-		else:
-			ht[x] = str(line_num)
+    if len(s) > LONG_WORD_LENGTH: 
+        long_words[s] = line_num
+        return
+    for x in do_permute(s): 
+        #if len(x) < MIN_WILD_LENGTH + 2: continue
+        if ht.has_key(x):
+            ht[x] = ht[x] + " " + str(line_num)
+            a = 1
+        else:
+            ht[x] = str(line_num)
 
 """ Given a rotated query, returns the list of rows of long word matches """
 def checkLongWords(query):
-	result = []
-	for word in long_words.keys():
-		for permuterm in do_permute(word):
-			if permuterm==query:
-				result.append(long_words[word])
-	return result
+    result = []
+    for word in long_words.keys():
+        for permuterm in do_permute(word):
+            if permuterm==query:
+                result.append(long_words[word])
+    return result
 
-""" Returns rotated form of query with one wildcard """	
+""" Returns rotated form of query with one wildcard """    
 def rotate1wild(s):
-	s = s + '$'
-	b = list(s)
-	return s[b.index('*')+1:] + s[:b.index('*')]
-	
-""" Returns (rotated form, middle) of query with two wildcards as tuple """	
+    s = s + '$'
+    b = list(s)
+    return s[b.index('*')+1:] + s[:b.index('*')]
+    
+""" Returns (rotated form, middle) of query with two wildcards as tuple """    
 def rotate2wild(s):
-	s = s + '$'
-	b = list(s)	
-	i = b.index('*')
-	s = s[:i] + s[i+1:]
-	b = list(s)
-	j = b.index('*')
-	return (s[j+1:] + s[:i], s[i:j])
+    s = s + '$'
+    b = list(s)    
+    i = b.index('*')
+    s = s[:i] + s[i+1:]
+    b = list(s)
+    j = b.index('*')
+    return (s[j+1:] + s[:i], s[i:j])
 
 """ Returns a list of row numbers matching the wildcard query """
 def getWildcardRows(s):
-	b = list(s)
-	result = []
-	if b.count('*')==1:
-		res = rotate1wild(s)
-		result = checkLongWords(res)
-		if ht.has_key(res):
-			result.extend(str(ht[res]).split(" "))
-	if b.count('*')==2:
-		if s[0]=='*' and s[len(s)-1]=='*':
-			result = rowsWithSubstring(s[1:len(s)-1])
-		else:
-			res = rotate2wild(s)
-			result = checkLongWords(res[0])
-			if ht.has_key(res[0]):
-				result.extend(str(ht[res[0]]).split(" "))
-			result = postProcess(result, res[1])
-	return result
-	
+    b = list(s)
+    result = []
+    if b.count('*')==1:
+        res = rotate1wild(s)
+        result = checkLongWords(res)
+        if ht.has_key(res):
+            result.extend(str(ht[res]).split(" "))
+    if b.count('*')==2:
+        if s[0]=='*' and s[len(s)-1]=='*':
+            result = rowsWithSubstring(s[1:len(s)-1])
+        else:
+            res = rotate2wild(s)
+            result = checkLongWords(res[0])
+            if ht.has_key(res[0]):
+                result.extend(str(ht[res[0]]).split(" "))
+            result = postProcess(result, res[1])
+    return result
+    
 """ Filters and returns only the rows corresponding to words which contain the substring 'sub' """
 def postProcess(rows, sub):
-	return [row for row in rows if getQueryByNumber(row)[0].find(sub)!=-1]
-	
+    return [row for row in rows if getQueryByNumber(row)[0].find(sub)!=-1]
+    
 """ Returns all rows in index with word containing substring 'sub' """
 def rowsWithSubstring(sub):
-	index = open(sys.argv[2], 'r')
-	line_num = 0
-	result = []
-	for line in index:
-		words = line.split(' ', 1)
-		if words[0].find(sub)!=-1:
-			result.append(line_num)
-		line_num += 1
-	return result
-	
+    index = open(sys.argv[2], 'r')
+    line_num = 0
+    result = []
+    for line in index:
+        words = line.split(' ', 1)
+        if words[0].find(sub)!=-1:
+            result.append(line_num)
+        line_num += 1
+    return result
+    
 """ Returns a (query, docs) tuple for a given line number """
 def getQueryByNumber(num):
-	num = int(num)
-	index = open(sys.argv[2], 'r')
-	line_num = 0
-	for line in index:
-		if line_num==num:
-			words = line.split(' ', 1)
-			return (words[0], words[1])
-		line_num += 1
+    num = int(num)
+    index = open(sys.argv[2], 'r')
+    line_num = 0
+    for line in index:
+        if line_num==num:
+            words = line.split(' ', 1)
+            return (words[0], words[1])
+        line_num += 1
 
 """ Returns the query type (e.g. boolean query) """
 def getQueryType(query):
@@ -142,18 +142,26 @@ def getQueryType(query):
             return WILDCARD_QUERY
     return ONE_WORD_QUERY
 
-""" Returns a list of documents containing the given word """
-def getDocsWithWord(word):
+""" Returns all the index data associated with a given word (as a string) """
+def getDataWithWord(word):
     docs = []
     index = open(sys.argv[2])
     for line in index:
-        line = line.split(" ", 1)
-        if line[0]==word:
-            doclist = eval(line[1].strip('\n'))
-            for word_instance in doclist:
-                docs.append(int(word_instance[0]))
-    docs = removeDuplicatesAndSort(docs)
-    return docs
+        words = line.split(" ", 1)
+        if words[0]==word:
+            return line.strip('\n')
+
+""" Given parsed index data (word, idf, docs/positions list), returns a list of docs """
+def getDocsFromData(data):
+    return removeDuplicatesAndSort([x[0] for x in data[2]])
+
+""" Returns a list of documents containing the given word """
+def getDocsWithWord(word):
+    data = getDataWithWord(word)
+    if not data:
+        return []
+    else:
+        return getDocsFromData(parseDocData(getDataWithWord(word)))
 
 """ Returns a list of (document, location) tuples corresponding to the given word, which may contain wildcards """
 def getDocLocsWithWord(word):
@@ -165,10 +173,10 @@ def getDocLocsWithWord(word):
     index = open(sys.argv[2])
     result_list = []
     if wildcard:
-	    rows = getWildcardRows(word)
-		for row in rows:
-			line = getQueryByNumber(getWildcardRows(word))
-			result_list.append(line[1].strip('\n'))
+        rows = getWildcardRows(word)
+        for row in rows:
+            line = getQueryByNumber(getWildcardRows(word))
+            result_list.append(line[1].strip('\n'))
     else:
         for line in index:
             line = line.split(" ", 1)
@@ -179,16 +187,16 @@ def getDocLocsWithWord(word):
     return docs
 
 def parseDocData(docdata):
-    docdata = docdata.split(" ",1)
-    docdata = (docdata[0], docdata[1].split(","))
-    docdata[1].pop() # remove element created by trailing comma
-    for i in range(len(docdata[1])):
-        docdata[1][i] = docdata[1][i].split(" ")
-    result = [[] for x in docdata[1]]
-    for i in range(len(docdata[1])):
-        for num in docdata[1][i]:
+    docdata = docdata.split(" ",2)
+    docdata = (docdata[0], docdata[1], docdata[2].split(","))
+    docdata[2].pop() # remove element created by trailing comma
+    for i in range(len(docdata[2])):
+        docdata[2][i] = docdata[2][i].split(" ")
+    result = [[] for x in docdata[2]]
+    for i in range(len(docdata[2])):
+        for num in docdata[2][i]:
             result[i].append(int(num))
-    return (float(docdata[0]), result)
+    return (docdata[0], float(docdata[1]), result)
 
 """ Returns a list of documents that satisfy the given boolean expression """
 def getDocsFromBool(expr):
@@ -209,6 +217,10 @@ def getDocsFromBool(expr):
                 else:
                     docset = docset.intersection(set(getDocsFromBool(elem)))
             return removeDuplicatesAndSort(list(docset))
+
+""" Given a list of (word, idf, docs/positions list) index data, returns the data with only docs included in 'docs' """
+def removeDocsFromData(data, docs):
+    return [(x[0], x[1], [y for y in x[2] if y[0] in docs]) for x in data]
                 
 """ Removes operators from a string """
 def removeOperators(query):
@@ -281,7 +293,7 @@ def parseOneWordQuery(query):
     query = tokenize(query)
     query = removeStopWords(query)
     query = stemWords(query)
-    return getDocsWithWord(query)
+    return parseDocData(getDataWithWord(query))
 
 """ Parse a free text query and return matching documents """
 def parseFreeTextQuery(query):
@@ -293,8 +305,8 @@ def parseFreeTextQuery(query):
     query_list = query[0:len(query)].split(" ")
     docs = []
     for word in query_list:
-        docs.extend(getDocsWithWord(word))
-    return removeDuplicatesAndSort(docs)
+        docs.append(parseDocData(getDataWithWord(word)))
+    return docs
 
 """ Parse a phrase query and return matching documents """
 def parsePhraseQuery(query):
@@ -335,20 +347,22 @@ def parseBooleanQuery(query):
     query = stemWords(query)
     query = query.replace("1and", "AND")
     query = query.replace("1or", "OR")
-    query = bool_expr_ast(query)
-    return getDocsFromBool(query)
+    queryWords = query.replace("AND", "").replace("OR", "").replace("(", "").replace(")", "").replace("  ", " ")
+    data = parseFreeTextQuery(queryWords)
+    query = bool_expr_ast(query)    
+    return removeDocsFromData(data, getDocsFromBool(query))
 
 """ Parse a wildcard query and return matching documents """
 def parseWildcardQuery(query):
-	print "On query "+query
-	rows = getWildcardRows(query)
-	doclist = []
-	for row in rows:
-		print "row: "+str(row)
-		result = getQueryByNumber(row)
-		#print result[0]
-		doclist.append(parseDocData(result[1].strip('\n')))
-	return doclist
+    print "On query "+query
+    rows = getWildcardRows(query)
+    doclist = []
+    for row in rows:
+        print "row: "+str(row)
+        result = getQueryByNumber(row)
+        #print result[0]
+        doclist.append(parseDocData(result[1].strip('\n')))
+    return doclist
 
 print "Preprocessing"
 start = time.time()
@@ -360,12 +374,12 @@ long_words = {}
 index = open(sys.argv[2], 'r');
 line_num = 0
 for line in index:
-	words = line.split(' ')
-	if line_num%20000==0:
-		print str(line_num) + " on "+ str(time.time() - start2)
-		start2 = time.time()
-	htable_add(words[0], line_num)
-	line_num += 1
+    words = line.split(' ')
+    if line_num%20000==0:
+        print str(line_num) + " on "+ str(time.time() - start2)
+        start2 = time.time()
+    htable_add(words[0], line_num)
+    line_num += 1
 
 print "Done preprocessing ("+str(time.time() - start)+" seconds)."
 
@@ -383,4 +397,4 @@ for query in queries:
         docs = parseBooleanQuery(query)
     elif qtype==WILDCARD_QUERY:
         docs = parseWildcardQuery(query)
-    print " ".join([str(i) for i in docs])
+    print docs
