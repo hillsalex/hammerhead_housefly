@@ -154,6 +154,9 @@ def getDataWithWord(word):
 """ Given parsed index data (word, idf, docs/positions list), returns a list of docs """
 def getDocsFromData(data):
     return removeDuplicatesAndSort([x[0] for x in data[2]])
+    
+def getDocLocsFromData(data):
+    return [(x[0], x[i]) for x in data[2] for i in range(1,len(x))]
 
 """ Returns a list of documents containing the given word """
 def getDocsWithWord(word):
@@ -161,30 +164,24 @@ def getDocsWithWord(word):
     if not data:
         return []
     else:
-        return getDocsFromData(parseDocData(getDataWithWord(word)))
+        return getDocsFromData(parseDocData(data))
 
 """ Returns a list of (document, location) tuples corresponding to the given word, which may contain wildcards """
 def getDocLocsWithWord(word):
-    docs = []
+    data = getDataWithWord(word)
+    if not data:
+        return []
     wildcard = False
     for letter in word:
         if letter=='*':
             wildcard = True
-    index = open(sys.argv[2])
-    result_list = []
     if wildcard:
         rows = getWildcardRows(word)
         for row in rows:
             line = getQueryByNumber(getWildcardRows(word))
             result_list.append(line[1].strip('\n'))
     else:
-        for line in index:
-            line = line.split(" ", 1)
-            if line[0]==word:
-                result_list = [line[1].strip('\n')]
-    for doc_instance in result_list:
-        docs.append(parseDocData(doc_instance))
-    return docs
+        return getDocLocsFromData(parseDocData(data))
 
 def parseDocData(docdata):
     docdata = docdata.split(" ",2)
@@ -332,9 +329,11 @@ def parsePhraseQuery(query):
                     break
             if not found_one:
                 delete_flags[i] = True
-                break
+                break    
     docs = [possible_docs[i][0] for i in range(len(possible_docs)) if delete_flags[i]==False]
-    return removeDuplicatesAndSort(docs)
+    docs = removeDuplicatesAndSort(docs)
+    data = parseFreeTextQuery(query)
+    return removeDocsFromData(data, docs)
 
 """ Parse a boolean query and return matching documents """
 def parseBooleanQuery(query):
