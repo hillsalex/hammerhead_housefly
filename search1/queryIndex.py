@@ -165,7 +165,7 @@ def getDocLocsWithWord(word):
     index = open(sys.argv[2])
     result_list = []
     if wildcard:
-	rows = getWildcardRows(word)
+        rows = getWildcardRows(word)
 	for row in rows:
            line = getQueryByNumber(getWildcardRows(word))
            result_list.append(line[1].strip('\n'))
