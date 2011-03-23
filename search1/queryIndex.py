@@ -17,8 +17,6 @@ WILDCARD_QUERY = 5
 if len(sys.argv) < 4:
 	print "format: "+sys.argv[0]+" stopwords index titles"
 	exit()
-	
-queries = sys.stdin.readlines()
 
 """ Returns a list of permutations for single wildcard queries """
 def permute_single(s):
@@ -381,6 +379,29 @@ def oneWordQueryVector(query):
 def createWildcardVector(query,docs):
 	print 'f'
 
+def printResults(scores):
+	result = []
+	for k,v in scores.iteritems():
+		result.append((k,v))
+	result = sorted(result,key=itemgetter(0))
+	print result
+	result = sorted(result,key=itemgetter(1),reverse=True)
+	print result
+	s = ""
+	for i in result:
+		s+=str(int(i[0])-1) + " "
+	print s
+	
+def itemgetter(*items):
+    if len(items) == 1:
+        item = items[0]
+        def g(obj):
+            return int(obj[item])
+    else:
+        def g(obj):
+            return tuple(int(obj[item]) for item in items)
+    return g
+	
 def getOWQDocRank(docs,query):
 	docscores = {}
 	for termdocs in docs:
@@ -391,6 +412,7 @@ def getOWQDocRank(docs,query):
 				count=len(doc[1:])
 				#docscores[str(int(doc[0])+1)]=queryweights[term]*count/docweights[str(int(doc[0])+1)]
 				docscores[str(int(doc[0])+1)]=count/docweights[str(int(doc[0])+1)]
+	return docscores
 				
 def getFTQDocRank(docs,query):
 	queryweights = {}
@@ -410,7 +432,10 @@ def getFTQDocRank(docs,query):
 				count=len(doc[1:])
 				docscores[str(int(doc[0])+1)]=math.log10(len(query_list)/idf)*count/docweights[str(int(doc[0])+1)]
 				#docscores[str(int(doc[0])+1)]=count/docweights[str(int(doc[0])+1)]
-
+	#for k,v in docscores.iteritems():
+	#	print str(k) + ' ' + str(v)
+	return docscores
+		
 def getPQDocRank(docs,query):
 	queryweights = {}
 	query = removeOperators(query)
@@ -428,9 +453,37 @@ def getPQDocRank(docs,query):
 			for doc in doclocations[0]:
 				count=len(doc[1:])
 				docscores[str(int(doc[0])+1)]=math.log10(len(query_list)/idf)*count/docweights[str(int(doc[0])+1)]
+	return docscores
 				#docscores[str(int(doc[0])+1)]=count/docweights[str(int(doc[0])+1)]
-	for k,v in docscores.iteritems():
-		print str(k) + ' ' + str(v)
+	#for k,v in docscores.iteritems():
+	#	print str(k) + ' ' + str(v)
+		
+def getBQDocRank(docs,query):
+	
+	# Escape AND/OR operators
+	query = query.replace("AND", "1and")
+	query = query.replace("OR", "1or")
+	query = query.lower()
+	#query = tokenize(query)
+	query = removeStopWords(query)
+	query = stemWords(query)
+	query = query.replace("1and", "AND")
+	query = query.replace("1or", "OR")
+	query = query.replace("AND", "").replace("OR", "").replace("(", "").replace(")", "").replace("  ", " ")
+	query_list = query[0:len(query)].split(" ")
+	docscores = {}
+	for termdocs in docs:
+		if len(termdocs)>0:
+			term = termdocs[0]
+			idf = termdocs[1]+1
+			doclocations = termdocs[2:]
+			for doc in doclocations[0]:
+				count=len(doc[1:])
+				docscores[str(int(doc[0])+1)]=math.log10(len(query_list)/idf)*count/docweights[str(int(doc[0])+1)]
+				#docscores[str(int(doc[0])+1)]=count/docweights[str(int(doc[0])+1)]
+	#for k,v in docscores.iteritems():
+	#	print str(k) + ' ' + str(v)
+	return docscores
 	
 	
 #print "Preprocessing"
@@ -441,6 +494,7 @@ start2 = time.time()
 ht = {}
 long_words = {}
 docweights = {}
+titledict = {}
 index = open(sys.argv[2], 'r');
 line_num = 0
 for line in index:
@@ -457,24 +511,32 @@ for line in index:
 			weight = weight.split(',')
 			docweights[str(int(weight[0])+1)]=math.sqrt(float(weight[1]))
 
+titles = open(sys.argv[3],'r');
+for line in titles:
+	tup = eval(line.rstrip('\n'))
+	titledict[tup[0]]=tup[1]
+	print tup
+			
 #print "Done preprocessing ("+str(time.time() - start)+" seconds)."
 
-for query in queries:
+while 1: 
+	query = sys.stdin.readline()
 	query = query.rstrip('\n')
 	docs = []
 	qtype = getQueryType(query)
 	if qtype==ONE_WORD_QUERY:
 		docs = parseOneWordQuery(query)
-		
-		getOWQDocRank(docs,query)
+		scores = getOWQDocRank(docs,query)
 	elif qtype==FREE_TEXT_QUERY:
 		docs = parseFreeTextQuery(query)
-		getFTQDocRank(docs,query)
+		scores = getFTQDocRank(docs,query)
 	elif qtype==PHRASE_QUERY:
 		docs = parsePhraseQuery(query)
-		getPQDocRank(docs,query)
+		scores = getPQDocRank(docs,query)
 	elif qtype==BOOLEAN_QUERY:
 		docs = parseBooleanQuery(query)
+		scores = getBQDocRank(docs,query)
 	elif qtype==WILDCARD_QUERY:
-		docs = parseWildcardQuery(query)
-	print docs
+		#docs = parseWildcardQuery(query)
+		scores = {}
+	printResults(scores);

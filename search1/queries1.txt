@@ -7,8 +7,8 @@ some
 text
 science
 test
-engine AND science OR test
-"so* *ext"
+Hoover Historical Center, 1875 East Maple Street, North Canton
+engine AND science  OR test
 American
 Housework
 American Housework

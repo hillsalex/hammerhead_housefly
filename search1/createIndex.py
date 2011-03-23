@@ -24,9 +24,10 @@ textCheck = re.compile('(.*?)(<text>)(.*?)(</text>)', re.DOTALL)
 
 '''HERE"S MY TEST'''
 words = {}
-
-
+doclengths = []
+docIDS = []
 def parsePage(page):
+	terms = {}
 	ID = idCheck.search(page).group(3)
 	title = titleCheck.search(page).group(3)
 	#titleFile.write(str((ID,title)) + '\n')
@@ -37,10 +38,17 @@ def parsePage(page):
 	text = re.sub(r'\W+',' ',text)
 	text = re.sub('\s+',' ',text)
 	text = text.split(' ')
+	doclengths.append(0)
+	docIDS.append(ID)
 	for i in range(0,len(text)):
+		#doclengths[len(doclengths)-1]+=1
 		text[i] = p.stem(text[i], 0, len(text[i])-1)
 	text = [t for t in text if t not in stopWords]
 	for i in range(0,len(text)):
+		if text[i] in terms:
+			terms[text[i]] = terms[text[i]]+1
+		else:
+			terms[text[i]] = 1
 		if text[i] in words:
 			wordresult = words[text[i]]
 			freq = wordresult[0]+1
@@ -57,7 +65,8 @@ def parsePage(page):
 		else:
 			wordresult = (1,{ID:str(i)})
 			words[text[i]] = wordresult
-			
+	for k,v in terms.iteritems():
+		doclengths[len(doclengths)-1]+=int(v)*int(v)
 
 
 
@@ -99,7 +108,11 @@ def writeIndex(index):
 		for x,y in docs.iteritems():
 			indexFile.write(str(x) + ' ' + str(y) + ',')
 		indexFile.write('\n')
-
+	indexFile.write('; ')
+	for i in range(len(doclengths)):
+		length = doclengths[i]
+		ID = docIDS[i]
+		indexFile.write(str(ID) + ',' + str(length) + ' ')
 start = time.time()
 
 totalpages=0
