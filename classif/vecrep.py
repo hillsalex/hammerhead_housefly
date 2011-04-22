@@ -105,4 +105,4 @@ end = time.time()
 elapsed= end - start
 
 min = elapsed/60
-#print('Time elapsed: ' + str(min)) #comment to not print runtime
+print('Time elapsed: ' + str(min)) #comment to not print runtime
