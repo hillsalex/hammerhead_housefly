@@ -15,12 +15,23 @@ p = PorterStemmer.PorterStemmer()
 #collectionString = swf.read()
 #swf.close()
 
-indexFile = open(sys.argv[3],'w')
+#indexFile = open(sys.argv[3],'w')
 #titleFile = open(sys.argv[4],'w')
 
 idCheck = re.compile('(.*?)(<id>)(.*?)(</id>)', re.DOTALL)
 titleCheck = re.compile('(.*?)(<title>)(.*?)(</title>)', re.DOTALL)
 textCheck = re.compile('(.*?)(<text>)(.*?)(</text>)', re.DOTALL)
+linkCheck = re.compile('(.*?)(\[\[)(.*?)([\]\|\#])',re.DOTALL)
+
+#USAGE OF LINK CHECK
+'''text = '[[Assembly Language|ass]][[gjgjeioaw]][[Allhogp#fewag]]'
+m = linkCheck.findall(text)
+for x in m:
+	print x[2]
+'''
+
+docs = {}
+linkListsDictionary = {}
 
 '''HERE"S MY TEST'''
 words = {}
@@ -68,6 +79,65 @@ def parsePage(page):
 	for k,v in terms.iteritems():
 		doclengths[len(doclengths)-1]+=int(v)*int(v)
 
+	
+def makeIDPair(page):
+	terms = {}
+	ID = idCheck.search(page).group(3)
+	title = titleCheck.search(page).group(3)
+	docs[title]=ID
+
+
+
+def makeDocIDDictionary():
+	swf = open(sys.argv[1],'r')
+	swf.readline()
+	currentPage = ''
+	for line in swf:
+		if (not (line.find('<page>')>-1 or line.find('</page>')>-1)):
+			currentPage += line
+		if (line.find('</page>')>-1):
+			makeIDPair(currentPage)
+			currentPage=''
+	swf.close()
+
+
+
+def makeAdjacency():
+	swf = open(sys.argv[1],'r')
+	swf.readline()
+	currentPage = ''
+	for line in swf:
+		if (not (line.find('<page>')>-1 or line.find('</page>')>-1)):
+			currentPage += line
+		if (line.find('</page>')>-1):
+			getLinks(currentPage)
+			currentPage=''
+	swf.close()
+	'''
+	for k,v in words.iteritems():
+		freq = v[0]
+		freq = math.log10(float(totalpages)/float(freq))
+		words[k] = (freq, v[1])
+	'''
+	
+			
+def descendingCmp(a,b):
+	return cmp(int(a),int(b))
+
+
+def getLinks(page):
+	terms = {}
+	ID = idCheck.search(page).group(3)
+	title = titleCheck.search(page).group(3)
+	#titleFile.write(str((ID,title)) + '\n')
+	text = ' ' + textCheck.search(page).group(3)
+	text += " " + title;
+	hits = linkCheck.findall(text)
+	linkListsDictionary[ID] = ''
+	for link in hits:
+		if link[2] in docs:
+			linkListsDictionary[ID] = linkListsDictionary[ID] + ' ' + str(docs[link[2]])
+	
 
 
 def makeStopWords():
@@ -113,6 +183,28 @@ def writeIndex(index):
 		length = doclengths[i]
 		ID = docIDS[i]
 		indexFile.write(str(ID) + ',' + str(length) + ' ')
+		
+		
+start = time.time()
+		
+makeDocIDDictionary()
+makeAdjacency() #python createIndex.py collection output
+writefile = open(sys.argv[2],'w')
+keys = linkListsDictionary.keys()
+keys.sort(descendingCmp)
+for k in keys:
+	l = linkListsDictionary[k].strip().split(' ')
+	l = list(set(l))
+	l.sort(descendingCmp)
+	writefile.write(str(k))
+	for x in l:
+		writefile.write(" " + str(x))
+	writefile.write('\n')
+
+end = time.time()
+elapsed=end-start
+print str(elapsed/60)
+'''
 start = time.time()
 
 totalpages=0
@@ -126,3 +218,4 @@ elapsed= end - start
 
 min = elapsed/60
 print('Time elapsed: ' + str(min)) #comment to not print runtime
+'''
