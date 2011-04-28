@@ -61,7 +61,7 @@ def readFiles():
 
 def makeFeatures():
 	swf = open(sys.argv[3],'r')
-	index = 0
+	index = 1
 	for line in swf:
 		text = line.strip()
 		features[text]=index
